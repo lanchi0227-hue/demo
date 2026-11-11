@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>音樂快慢列車</title>
+<style>
+:root{--bg:#fdf8ee;--card:#fff;--ink:#2b2438;--mute:#6d6580;--acc:#7c4dff;--ok:#1f9d6b;--bad:#d64550;--line:#e6dfd0;--sky:#cfeaff;--ground:#8bc48a;--tie:#6b4f3a;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#181424;--card:#241e36;--ink:#f1ecff;--mute:#a79fc0;--acc:#a78bfa;--ok:#4cd9a0;--bad:#ff7a85;--line:#3a3252;--sky:#2a3f66;--ground:#2c5a45;--tie:#c9b79c;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#181424;--card:#241e36;--ink:#f1ecff;--mute:#a79fc0;--acc:#a78bfa;--ok:#4cd9a0;--bad:#ff7a85;--line:#3a3252;--sky:#2a3f66;--ground:#2c5a45;--tie:#c9b79c;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif}
+#app{max-width:520px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px}
+.c{text-align:center}.big{font-size:56px}h1{margin:.2em 0 0;font-size:28px}.sub{font-size:20px;color:var(--acc);margin:0 0 12px;font-weight:700}.mute{color:var(--mute);font-size:14px}
+.bar{display:flex;justify-content:space-between;margin-bottom:12px;font-weight:700}
+.btn{display:block;width:100%;margin:10px 0;padding:14px;border:0;border-radius:14px;background:var(--acc);color:#fff;font:inherit;font-weight:700;font-size:18px;cursor:pointer}
+.btn.alt{background:#ff8a3d}.btn small{display:block;font-weight:400;font-size:13px;opacity:.9}
+button{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:8px 14px;cursor:pointer}
+.btn,.btn.alt{color:#fff}
+.q{font-size:18px;margin:12px 0}
+.play{padding:10px 22px;border:2px solid var(--acc);border-radius:999px;background:none;color:var(--acc);font-weight:700;font-size:17px}
+.track{position:relative;height:110px;overflow:hidden;border-radius:14px;background:linear-gradient(var(--sky) 0 72%,var(--ground) 72%)}
+.train{position:absolute;left:50%;bottom:28px;font-size:56px;line-height:1;transform:translateX(-50%);animation:bn ease-in-out infinite;animation-play-state:paused}
+.rail{position:absolute;left:0;right:0;bottom:14px;height:8px;background:repeating-linear-gradient(90deg,var(--tie) 0 10px,transparent 10px 60px);animation:mv linear infinite;animation-play-state:paused}
+@keyframes mv{to{background-position:-60px 0}}@keyframes bn{50%{transform:translateX(-50%) translateY(-9px)}}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+.ins{padding:12px 6px;border:2px solid var(--line);border-radius:16px;font-size:16px;font-weight:700}
+.ins span{display:block;font-size:42px;line-height:1.2}
+.ins.ok{border-color:var(--ok)}.ins.bad{border-color:var(--bad)}
+.sl{display:flex;align-items:center;gap:8px;margin-top:8px}.sl input{flex:1}.bpm{font-size:20px;margin:4px 0}
+.fb{text-align:left;padding:12px;border-radius:12px;margin:10px 0;font-size:15px;border:1px solid var(--line)}.fb.g b{color:var(--ok)}.fb.r b{color:var(--bad)}
+</style></head><body><div id="app"></div>
+<script>
+const T=[{n:'慢車',e:'🚂',t:'慢板 Adagio',lo:56,hi:72},{n:'普通車',e:'🚃',t:'行板 Andante',lo:80,hi:100},{n:'快車',e:'🚄',t:'快板 Allegro',lo:116,hi:136},{n:'特快車',e:'🚅',t:'急板 Presto',lo:156,hi:184}];
+const A=document.getElementById('app'),$=id=>document.getElementById(id),ri=(a,b)=>(a+Math.random()*(b-a))|0;
+const F=[261.6,293.7,329.6,392,440,523.3],tierOf=b=>b<76?0:b<108?1:b<146?2:3;
+let ac,O,timer,nb,R={},S={};
+function ctx(){if(!ac){ac=new(window.AudioContext||window.webkitAudioContext)();O=ac.createGain();O.gain.value=.8;O.connect(ac.destination)}if(ac.state==='suspended')ac.resume();return ac}
+function noise(c){if(!nb){nb=c.createBuffer(1,c.sampleRate,c.sampleRate);const d=nb.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1}return nb}
+function o1(c,f,t,d,pk,a){const s=c.createOscillator(),g=c.createGain();s.frequency.value=f;g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(pk,t+a);g.gain.exponentialRampToValueAtTime(.0001,t+d);s.connect(g).connect(O);s.start(t);s.stop(t+d+.05)}
+function kick(c,t){const s=c.createOscillator(),g=c.createGain();s.frequency.setValueAtTime(150,t);s.frequency.exponentialRampToValueAtTime(45,t+.15);g.gain.setValueAtTime(.9,t);g.gain.exponentialRampToValueAtTime(.0001,t+.3);s.connect(g).connect(O);s.start(t);s.stop(t+.35)}
+function burst(c,t,type,fr,d,pk){const n=c.createBufferSource(),h=c.createBiquadFilter(),g=c.createGain();n.buffer=noise(c);h.type=type;h.frequency.value=fr;g.gain.setValueAtTime(pk,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);n.connect(h).connect(g).connect(O);n.start(t);n.stop(t+d+.02)}
+function beat(c,t,i){if(i%2==0)kick(c,t);burst(c,t,'highpass',6000,.05,.2);const f=F[R.mel[i%8]];o1(c,f,t,.5,.25,.01);o1(c,f*2,t,.3,.08,.01)}
+function sched(){const c=ac,n=c.currentTime;
+while(R.music&&R.nm<n+.15){beat(c,R.nm,R.mi);R.nm+=60/R.bpm;R.mi++;if(!R.loop&&R.mi>=8)R.music=false}
+while(R.train&&R.nt<n+.15){burst(c,R.nt,'bandpass',700,.09,.7);R.nt+=60/S.bpm}
+if(!R.music&&!R.train)stopAudio()}
+function stopAudio(){clearInterval(timer);R={}}
+function play(bpm,loop,train){const c=ctx();stopAudio();const t=c.currentTime+.1;
+R={music:1,loop,bpm,nm:t,mi:0,mel:Array.from({length:8},()=>ri(0,6)),train,nt:t};timer=setInterval(sched,40);sched()}
+function vis(b,e,on){const t=$('tr'),r=$('rl');t.textContent=e;[t,r].forEach(x=>{x.style.animationDuration=60/b+'s';x.style.animationPlayState=on?'running':'paused'})}
+function home(){stopAudio();A.innerHTML=`<div class="card c"><div class="big">🚂</div><h1>音樂快慢列車</h1><p class="sub">跟著節拍出發！</p>
+<p>音樂越快，列車就要開越快。聽出音樂的速度，讓列車準時進站！<br>5 題累積 30 分就能過關。</p>
+<button class="btn" onclick="start(1)">選列車<small>聽音樂，選出正確的列車・5 題</small></button>
+<button class="btn alt" onclick="start(2)">調速度挑戰<small>拉滑桿，讓列車節拍對上音樂・5 題</small></button>
+<p class="mute">🎧 建議戴上耳機或調高音量</p></div>`}
+function start(m){S={mode:m,i:0,N:5,score:0,streak:0,bpm:100,tr:true};next()}
+function next(){if(S.i>=S.N)return end();S.i++;S.done=false;
+if(S.mode==1){let k;do{k=ri(0,4)}while(k===S.k);S.k=k;S.target=ri(T[k].lo,T[k].hi+1)}
+else{S.target=ri(60,171);S.bpm=100;S.tol=[10,8,7,6,5][S.i-1]}
+draw()}
+function draw(){const m1=S.mode==1;
+A.innerHTML=`<div class="bar"><span>第 ${S.i}／${S.N} 題</span><span>⭐ ${S.score}</span><span>🔥 ${S.streak}</span></div><div class="card c">
+<div class="track"><div class="train" id="tr">🚉</div><div class="rail" id="rl"></div></div>
+<p class="q">${m1?'聽聽看，這首音樂要搭哪一種列車？':`調整列車速度，讓列車節拍跟上音樂！<br><small class="mute">容許誤差 ±${S.tol} BPM</small>`}</p>
+<button class="play" onclick="replay()">🔊 ${m1?'再聽一次':'重播音樂'}</button>
+${m1?`<div class="grid">${T.map((x,i)=>`<button class="ins" id="t${i}" onclick="pick(${i})"><span>${x.e}</span>${x.n}</button>`).join('')}</div>`
+:`<div class="sl"><span>🐢 慢</span><input type="range" id="sp" min="50" max="190" value="${S.bpm}"><span>快 🐇</span></div><p class="bpm"><b id="bv">${S.bpm}</b> BPM</p>
+<div class="row"><button id="tg" onclick="tgl()">🚂 列車節拍：開</button> <button onclick="chk()"><b>✅ 對上了！</b></button></div>`}
+<div id="fb"></div></div>`;
+if(!m1){$('sp').oninput=e=>{S.bpm=+e.target.value;$('bv').textContent=S.bpm;vis(S.bpm,T[tierOf(S.bpm)].e,true)};vis(S.bpm,T[tierOf(S.bpm)].e,true)}
+play(S.target,!m1,!m1&&S.tr)}
+function replay(){play(S.target,S.mode==2&&!S.done,S.mode==2&&!S.done&&S.tr)}
+function tgl(){if(S.done)return;S.tr=!S.tr;$('tg').textContent='🚂 列車節拍：'+(S.tr?'開':'關');if(R.music){R.train=S.tr;R.nt=R.nm}}
+function nextBtn(){return `<button class="btn" onclick="next()">${S.i>=S.N?'看結果':'下一題'}</button>`}
+function pick(i){if(S.done)return;S.done=true;const ok=i==S.k;if(ok){S.score+=10;S.streak++}else S.streak=0;
+$('t'+S.k).classList.add('ok');if(!ok)$('t'+i).classList.add('bad');vis(S.target,T[S.k].e,true);
+$('fb').innerHTML=`<div class="fb ${ok?'g':'r'}"><b>${ok?'答對了！+10 分':'差一點！'}</b><br>這首音樂是 ${S.target} BPM，屬於${T[S.k].t}，要搭${T[S.k].e} ${T[S.k].n}。</div>`+nextBtn()}
+function chk(){if(S.done)return;S.done=true;stopAudio();const d=Math.abs(S.bpm-S.target),p=d<=S.tol?10:d<=S.tol*2?5:0;
+S.score+=p;S.streak=p==10?S.streak+1:0;$('sp').disabled=true;vis(S.target,T[tierOf(S.target)].e,true);
+const h=p==10?'':S.bpm<S.target?'你的列車開得太慢了。':'你的列車開得太快了。';
+$('fb').innerHTML=`<div class="fb ${p==10?'g':'r'}"><b>${p==10?'完美對上！+10 分':p?'很接近了！+5 分':'還差一點，再聽聽節拍。'}</b><br>音樂是 ${S.target} BPM，你調的是 ${S.bpm} BPM（相差 ${d}）。${h}<br>列車現在以正確速度前進。</div>`+nextBtn()}
+function end(){stopAudio();const mx=S.N*10,ok=S.score>=30,r=S.score/mx,t=r>=.9?['🏆','特級列車長']:r>=.6?['🚉','資深列車長']:['🎫','見習列車長'];
+A.innerHTML=`<div class="card c"><div class="big">${ok?'🎉':'🚧'}</div><h1>${ok?'過關成功！':'再挑戰一次'}</h1><p class="sub">${S.score}／${mx} 分</p>
+<p>${ok?`🏅 ${t[1]}・你已達到過關門檻（30 分），${r>=.9?'節拍感太棒了，':''}列車準時抵達！`:`過關需要 30 分，還差 ${30-S.score} 分。多聽幾次音樂的節拍，下次一定可以！`}</p>
+<button class="btn" onclick="start(${S.mode})">${ok?'再玩一次':'再挑戰一次'}</button><button class="btn alt" onclick="home()">回到首頁</button></div>`}
+home();
+</script></body></html>
